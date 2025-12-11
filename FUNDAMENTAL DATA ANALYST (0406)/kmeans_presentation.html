@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analisis Clustering K-Means pada Data Kolesterol Pasien Kardiovaskular</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow: hidden;
+        }
+
+        .presentation-container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .slide {
+            width: 100%;
+            height: 100%;
+            display: none;
+            background: white;
+            padding: 60px 80px;
+            position: relative;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        .slide.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .slide-header {
+            border-bottom: 4px solid #667eea;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+
+        .slide-title {
+            font-size: 42px;
+            color: #2d3748;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .slide-subtitle {
+            font-size: 24px;
+            color: #667eea;
+            font-weight: 500;
+        }
+
+        .slide-content {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .cover-slide {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            color: white;
+        }
+
+        .cover-slide .slide-title {
+            color: white;
+            font-size: 52px;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .cover-info {
+            font-size: 24px;
+            margin: 15px 0;
+            opacity: 0.95;
+        }
+
+        .content-list {
+            list-style: none;
+        }
+
+        .content-list li {
+            font-size: 28px;
+            padding: 15px 0;
+            padding-left: 40px;
+            position: relative;
+            color: #2d3748;
+            line-height: 1.5;
+        }
+
+        .content-list li:before {
+            content: "▸";
+            position: absolute;
+            left: 0;
+            color: #667eea;
+            font-size: 32px;
+        }
+
+        .two-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+        }
+
+        .column h3 {
+            font-size: 28px;
+            color: #667eea;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        .column p, .column li {
+            font-size: 22px;
+            line-height: 1.6;
+            color: #4a5568;
+            margin-bottom: 12px;
+        }
+
+        .highlight-box {
+            background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+            border-left: 5px solid #667eea;
+            padding: 25px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .highlight-box h3 {
+            color: #667eea;
+            font-size: 26px;
+            margin-bottom: 15px;
+        }
+
+        .highlight-box p, .highlight-box li {
+            font-size: 22px;
+            color: #2d3748;
+            line-height: 1.6;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 25px;
+            margin: 30px 0;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .stat-number {
+            font-size: 48px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .stat-label {
+            font-size: 20px;
+            opacity: 0.9;
+        }
+
+        .cluster-box {
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 15px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .cluster-box h4 {
+            color: #667eea;
+            font-size: 26px;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+
+        .cluster-box ul {
+            list-style: none;
+            padding-left: 20px;
+        }
+
+        .cluster-box li {
+            font-size: 20px;
+            padding: 8px 0;
+            color: #4a5568;
+            position: relative;
+        }
+
+        .cluster-box li:before {
+            content: "●";
+            position: absolute;
+            left: -20px;
+            color: #667eea;
+        }
+
+        .navigation {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            display: flex;
+            gap: 15px;
+            z-index: 1000;
+        }
+
+        .nav-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .nav-btn:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0,0,0,0.15);
+        }
+
+        .nav-btn:disabled {
+            background: #cbd5e0;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .slide-number {
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            background: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 18px;
+            color: #667eea;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 20px;
+        }
+
+        th {
+            background: #667eea;
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: bold;
+        }
+
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #e2e8f0;
+            color: #4a5568;
+        }
+
+        tr:hover {
+            background: #f7fafc;
+        }
+
+        .methodology-step {
+            background: #f7fafc;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+
+        .methodology-step h4 {
+            color: #667eea;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .methodology-step p {
+            font-size: 20px;
+            color: #4a5568;
+            line-height: 1.5;
+        }
+
+        .conclusion-list {
+            counter-reset: conclusion-counter;
+            list-style: none;
+        }
+
+        .conclusion-list li {
+            counter-increment: conclusion-counter;
+            font-size: 22px;
+            padding: 15px 0;
+            padding-left: 50px;
+            position: relative;
+            color: #2d3748;
+            line-height: 1.6;
+        }
+
+        .conclusion-list li:before {
+            content: counter(conclusion-counter);
+            position: absolute;
+            left: 0;
+            background: #667eea;
+            color: white;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="presentation-container">
+        <!-- Slide 1: Cover -->
+        <div class="slide active cover-slide">
+            <div class="slide-title">ANALISIS CLUSTERING K-MEANS<br>PADA DATA KOLESTEROL<br>PASIEN KARDIOVASKULAR</div>
+            <div class="cover-info"><strong>Oleh:</strong> Oktavian Ramadhani (19240388)</div>
+            <div class="cover-info"><strong>Mata Kuliah:</strong> Fundamental Data Analyst</div>
+            <div class="cover-info"><strong>Dosen:</strong> Galih Setiawan Nurohim, M.Kom</div>
+            <div class="cover-info">Program Studi Sistem Informasi (D3)</div>
+            <div class="cover-info">Universitas Bina Sarana Informatika - Surakarta</div>
+            <div class="cover-info">Tahun 2025</div>
+        </div>
+
+        <!-- Slide 2: Latar Belakang -->
+        <div class="slide">
+            <div class="slide-header">
+                <div class="slide-title">Latar Belakang</div>
+            </div>
+            <div class="slide-content">
+                <ul class="content-list">
+                    <li>Penyakit kardiovaskular adalah penyebab utama kematian global (17,9 juta/tahun - WHO)</li>
+                    <li>Kolesterol tinggi merupakan faktor risiko utama penyakit kardiovaskular</li>
+                    <li>Identifikasi dini kelompok berisiko tinggi sangat penting untuk pencegahan</li>
+                    <li>K-Means Clustering dapat membantu mengidentifikasi pola dan kelompok pasien</li>
+                    <li>Dataset Cardiovascular Disease dari Kaggle: 70.000 pasien dengan data komprehensif</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Slide 3: Rumusan Masalah & Tujuan -->
+        <div class="slide">
+            <div class="slide-header">
+                <div class="slide-title">Rumusan Masalah & Tujuan</div>
+            </div>
+            <div class="slide-content">
+                <div class="two-column">
+                    <div class="column">
+                        <h3>Rumusan Masalah</h3>
+                        <ul class="content-list">
+                            <li>Bagaimana karakteristik data kolesterol pasien?</li>
+                            <li>Berapa jumlah cluster optimal?</li>
+                            <li>Bagaimana profil setiap cluster?</li>
+                            <li>Bagaimana kualitas hasil clustering?</li>
+                        </ul>
+                    </div>
+                    <div class="column">
+                        <h3>Tujuan Penelitian</h3>
+                        <ul class="content-list">
+                            <li>Eksplorasi data kolesterol pasien</li>
+                            <li>Menentukan jumlah cluster optimal</li>
+                            <li>Mengelompokkan pasien dengan K-Means</li>
+                            <li>Memberikan rekomendasi medis</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 4: Metodologi -->
+        <div class="slide">
+            <div class="slide-header">
+                <div class="slide-title">Metodologi Penelitian</div>
+            </div>
+            <div class="slide-content">
+                <div class="methodology-step">
+                    <h4>1. Import Library & Load Dataset</h4>
+                    <p>Pandas, NumPy, Matplotlib, Seaborn, Scikit-learn</p>
+                </div>
+                <div class="methodology-step">
+                    <h4>2. Exploratory Data Analysis (EDA)</h4>
+                    <p>Analisis statistik deskriptif, missing values, outliers</p>
+                </div>
+                <div class="methodology-step">
+                    <h4>3. Persiapan Data</h4>
+                    <p>Seleksi fitur, konversi usia, filtering outlier</p>
+                </div>
+                <div class="methodology-step">
+                    <h4>4. Normalisasi Data</h4>
+                    <p>StandardScaler untuk menstandarisasi fitur</p>
+                </div>
+                <div class="methodology-step">
+                    <h4>5. Clustering & Evaluasi</h4>
+                    <p>Elbow Method, Silhouette Score, K-Means Clustering</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 5: Dataset -->
+        <div class="slide">
+            <div class="slide-header">
+                <div class="slide-title">Dataset</div>
+            </div>
+            <div class="slide-content">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number">70.000</div>
+                        <div class="stat-label">Total Pasien</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">13</div>
+                        <div class="stat-label">Variabel</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">0</div>
+                        <div class="stat-label">Missing Values</div>
+                    </div>
+                </div>
+                <div class="highlight-box">
+                    <h3>Variabel Utama untuk Clustering:</h3>
+                    <ul class="content-list">
+                        <li>Usia (age_years)</li>
+                        <li>Kolesterol (1=normal, 2=di atas normal, 3=sangat tinggi)</li>
+                        <li>Tekanan Darah Sistolik & Diastolik (ap_hi, ap_lo)</li>
+                        <li>Berat Badan (weight) dan Tinggi Badan (height)</li>
+                        <li>Glukosa (gluc)</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 6: Distribusi Kolesterol -->
+        <div class="slide">
+            <div class="slide-header">
+                <div class="slide-title">Distribusi Kolesterol</div>
+            </div>
+            <div class="slide-content">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Kategori Kolesterol</th>
+                            <th>Jumlah</th>
+                            <th>Persentase</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Normal (1)</td>
+                            <td>52.623</td>
+                            <td>75.2%</td>
+                        </tr>
+                        <tr>
+                            <td>Di atas normal (2)</td>
+                            <td>9.549</td>
+                            <td>13.6%</td>
+                        </tr>
+                        <tr>
+                            <td>Sangat tinggi (3)</td>
+                            <td>7.828</td>
+                            <td>11.2%</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="highlight-box">
+                    <h3>Temuan Penting:</h3>
+                    <p>Terdapat korelasi positif yang kuat antara level kolesterol dengan prevalensi penyakit kardiovaskular:</p>
+                    <ul class="content-list">
+                        <li>Kolesterol normal: ~40% memiliki penyakit kardiovaskular</li>
+                        <li>Kolesterol tinggi: ~60% memiliki penyakit kardiovaskular</li>
+                        <li>Kolesterol sangat tinggi: ~70% memiliki penyakit kardiovaskular</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 7: Penentuan K Optimal -->
+        <div class="slide">
+            <div class="slide-header">
+                <div class="slide-title">Penentuan Jumlah Cluster Optimal</div>
+            </div>
+            <div class="slide-content">
+                <div class="two-column">
+                    <div class="column">
+                        <h3>Elbow Method</h3>
+                        <p>Mencari "siku" pada grafik inertia vs K. Elbow terlihat di sekitar K=3.</p>
+                    </div>
+                    <div class="column">
+                        <h3>Silhouette Score</h3>
+                        <p>K=3 memiliki score 0.289 (kategori "cukup" dengan overlap moderat).</p>
+                    </div>
+                </div>
+                <div class="highlight-box" style="margin-top: 30px;">
+                    <h3>Keputusan: K = 3</h3>
+                    <ul class="content-list">
+                        <li>Trade-off baik antara simplicity dan kualitas</li>
+                        <li>Interpretable untuk konteks medis (risiko rendah, sedang, tinggi)</li>
+                        <li>Didukung oleh Elbow Method dan Silhouette Score</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 8: Hasil Clustering -->
+        <div class="slide">
+            <div class="slide-header">
+                <div class="slide-title">Hasil Clustering</div>
+            </div>
+            <div class="slide-content">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number">34.4%</div>
+                        <div class="stat-label">Cluster 0 (Risiko Rendah)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">43.1%</div>
+                        <div class="stat-label">Cluster 1 (Risiko Sedang)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">22.5%</div>
+                        <div class="stat-label">Cluster 2 (Risiko Tinggi)</div>
+                    </div>
+                </div>
+                <div class="highlight-box">
+                    <h3>Evaluasi Model:</h3>
+                    <ul class="content-list">
+                        <li><strong>Silhouette Score:</strong> 0.289 (cluster terbentuk dengan overlap moderat)</li>
+                        <li><strong>Davies-Bouldin Index:</strong> 1.234 (separasi antar cluster memadai)</li>
+                        <li><strong>Calinski-Harabasz Score:</strong> Tinggi (dispersi antar-cluster baik)</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 9: Profil Cluster 0 -->
+        <div class="slide">
+            <div class="slide-header">
+                <div class="slide-title">Cluster 0: Risiko Rendah (34.4%)</div>
+            </div>
+            <div class="slide-content">
+                <div class="cluster-box">
+                    <h4>Karakteristik</h4>
+                    <ul>
+                        <li>Usia rata-rata termuda: 51.2 tahun</li>
+                        <li>Kolesterol paling rendah: 1.15 (mendekati normal)</li>
+                        <li>Tekanan darah normal: 115/76 mmHg</li>
+                        <li>Berat badan relatif lebih rendah: 68.5 kg</li>
+                        <li>89.2% memiliki kolesterol normal</li>
+                    </ul>
+                </div>
+                <div class="cluster-box">
+                    <h4>Profil Kesehatan</h4>
+                    <ul>
+                        <li>Kondisi kesehatan paling baik di antara 3 cluster</li>
+                        <li>Risiko kardiovaskular paling rendah</li>
+                        <li>Gaya hidup kemungkinan lebih sehat</li>
+                    </ul>
+                </div>
+                <div class="cluster-box">
+                    <h4>Rekomendasi</h4>
+                    <ul>
+                        <li>Maintenance gaya hidup sehat</li>
+                        <li>Check-up rutin tahunan</li>
+                        <li>Fokus pada pencegahan primer</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 10: Profil Cluster 1 -->
+        <div class="slide">
+            <div class="slide-header">
+                <div class="slide-title">Cluster 1: Risiko Sedang (43.1%)</div>
+            </div>
+            <div class="slide-content">
+                <div class="cluster-box">
+                    <h4>Karakteristik</h4>
+                    <ul>
+                        <li>Usia menengah: 54.8 tahun</li>
+                        <li>Kolesterol sedikit di atas normal: 1.35</li>
+                        <li>Tekanan darah pre-hipertensi: 128/85 mmHg</li>
+                        <li>Berat badan moderat: 74.8 kg</li>
+                        <li>78.1% kolesterol normal, 21.9% di atas normal</li>
+                    </ul>
+                </div>
+                <div class="cluster-box">
+                    <h4>Profil Kesehatan</h4>
+                    <ul>
+                        <li>Kondisi kesehatan sedang dengan beberapa faktor risiko</li>
+                        <li>Berada di ambang batas normal-abnormal</li>
+                        <li>Perlu perhatian untuk mencegah progresivitas</li>
+                    </ul>
+                </div>
+                <div class="cluster-box">
+                    <h4>Rekomendasi</h4>
+                    <ul>
+                        <li>Monitoring berkala setiap 3-6 bulan</li>
+                        <li>Modifikasi gaya hidup (diet dan olahraga)</li>
+                        <li>Edukasi tentang faktor risiko</li>
+                        <li>Program kontrol berat badan</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 11: Profil Cluster 2 -->
+        <div class="slide">
+            <div class="slide-header">
+                <div class="slide-title">Cluster 2: Risiko Tinggi (22.5%)</div>
+            </div>
+            <div class="slide-content">
+                <div class="cluster-box">
+                    <h4>Karakteristik</h4>
+                    <ul>
+                        <li>Usia paling tua: 58.3 tahun</li>
+                        <li>Kolesterol tertinggi: 1.95 (hampir kategori 2)</li>
+                        <li>Tekanan darah hipertensi stage 1: 145/96 mmHg</li>
+                        <li>Berat badan paling tinggi: 82.3 kg</li>
+                        <li>Hanya 48.7% kolesterol normal, 51.3% di atas normal/tinggi</li>
+                    </ul>
+                </div>
+                <div class="cluster-box">
+                    <h4>Profil Kesehatan</h4>
+                    <ul>
+                        <li>Kondisi kesehatan paling berisiko</li>
+                        <li>Multiple risk factors untuk kardiovaskular</li>
+                        <li>Memerlukan intervensi medis segera</li>
+                    </ul>
+                </div>
+                <div class="cluster-box">
+                    <h4>Rekomendasi</h4>
+                    <ul>
+                        <li>Monitoring ketat bulanan</li>
+                        <li>Intervensi medis (kemungkinan medikasi: statin, antihipertensi)</li>
+                        <li>Program penurunan berat badan intensif</li>
+                        <li>Diet rendah kolesterol</li>
+                        <li>Rujukan ke spesialis jantung</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 12: Kesimpulan -->
+        <div class="slide">
+            <div class="slide-header">
+                <div class="slide-title">Kesimpulan</div>
+            </div>
+            <div class="slide-content">
+                <ul class="conclusion-list">
+                    <li>K-Means berhasil mengidentifikasi 3 kelompok pasien dengan profil risiko berbeda</li>
+                    <li>Distribusi: 34.4% risiko rendah, 43.1% risiko sedang, 22.5% risiko tinggi</li>
+                    <li>Usia, kolesterol, dan tekanan darah adalah faktor pembeda utama antar cluster</li>
+                    <li>Terdapat korelasi positif yang kuat antara kolesterol tinggi dengan penyakit kardiovaskular</li>
+                    <li>Model clustering memiliki kualitas cukup baik (Silhouette Score: 0.289)</li>
+                    <li>Sekitar 22.5% pasien berada dalam kategori risiko tinggi dan memerlukan intervensi segera</li>
+                    <li>Framework ini dapat digunakan untuk stratifikasi risiko dan personalisasi intervensi medis</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Slide 13: Saran -->
+        <div class="slide">
+            <div class="slide-header">
+                <div class="slide-title">Saran</div>
+            </div>
+            <div class="slide-content">
+                <div class="two-column">
+                    <div class="column">
+                        <h3>Praktik Medis</h3>
+                        <ul class="content-list">
+                            <li>Implementasi risk stratification berbasis clustering</li>
+                            <li>Program monitoring intensif untuk cluster risiko tinggi</li>
+                            <li>Alokasi resources sesuai tingkat risiko</li>
+                        </ul>
+                    </div>
+                    <div class="column">
+                        <h3>Penelitian Lanjutan</h3>
+                        <ul class="content-list">
+                            <li>Eksplorasi algoritma clustering lain (DBSCAN, Hierarchical)</li>
+                            <li>Penambahan variabel: LDL, HDL, trigliserida, genetik</li>
+                            <li>Validasi dengan data eksternal</li>
+                            <li>Follow-up longitudinal</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="highlight-box" style="margin-top: 30px;">
+                    <h3>Implementasi</h3>
+                    <ul class="content-list">
+                        <li>Pengembangan decision support system berbasis clustering</li>
+                        <li>Integrasi dengan Electronic Health Records (EHR)</li>
+                        <li>Development mobile app untuk patient self-monitoring</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 14: Terima Kasih -->
+        <div class="slide cover-slide">
+            <div class="slide-title">TERIMA KASIH</div>
+            <div class="cover-info" style="font-size: 28px; margin-top: 40px;">Pertanyaan & Diskusi</div>
+            <div class="cover-info" style="margin-top: 60px;">
+                <strong>Oktavian Ramadhani</strong><br>
+                NIM: 19240388<br>
+                Program Studi Sistem Informasi (D3)<br>
+                Universitas Bina Sarana Informatika - Surakarta
+            </div>
+        </div>
+    </div>
+
+    <div class="slide-number">
+        <span id="currentSlide">1</span> / <span id="totalSlides">14</span>
+    </div>
+
+    <div class="navigation">
+        <button class="nav-btn" id="prevBtn" onclick="changeSlide(-1)">◄ Sebelumnya</button>
+        <button class="nav-btn" id="nextBtn" onclick="changeSlide(1)">Selanjutnya ►</button>
+    </div>
+
+    <script>
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length;
+        
+        document.getElementById('totalSlides').textContent = totalSlides;
